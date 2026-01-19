@@ -65,7 +65,7 @@ on:
 
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 ```
@@ -102,7 +102,7 @@ only_verified: false
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
 ```
 
 ### Verify-Only Mode
@@ -110,7 +110,7 @@ jobs:
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       only_verified: true  # Only report confirmed leaks
       fail_on_finding: true
@@ -123,7 +123,7 @@ jobs:
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       scan_type: 'git'  # Scan entire git history
       scan_history: true
@@ -193,7 +193,7 @@ on: [pull_request]
 
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       scan_type: 'filesystem'
       only_verified: false
@@ -221,7 +221,7 @@ on:
 
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       only_verified: true
       fail_on_finding: true
@@ -243,7 +243,7 @@ on:
 
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       scan_type: 'git'
       scan_history: true
@@ -278,7 +278,7 @@ Then use:
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       config_file: '.trufflehog.yaml'
       fail_on_finding: true
@@ -294,7 +294,7 @@ on:
 
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: false
       comment_pr: true

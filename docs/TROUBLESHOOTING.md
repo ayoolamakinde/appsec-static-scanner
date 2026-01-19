@@ -660,7 +660,7 @@ When reporting issues:
 ### Check Existing Issues
 
 **GitHub Repositories:**
-- [appsec-static-scanner](https://github.com/your-org/appsec-static-scanner/issues)
+- [appsec-static-scanner](https://github.com/ayoolamakinde/appsec-static-scanner/issues)
 - [Trivy Issues](https://github.com/aquasecurity/trivy/issues)
 - [Semgrep Issues](https://github.com/returntocorp/semgrep/issues)
 - [Checkov Issues](https://github.com/bridgecrewio/checkov/issues)

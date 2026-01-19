@@ -68,7 +68,7 @@ on:
 
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 ```
@@ -103,7 +103,7 @@ compact: false
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
 ```
 
 ### With Terraform Only
@@ -111,7 +111,7 @@ jobs:
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform'
       fail_on_severity: 'HIGH'
@@ -124,7 +124,7 @@ jobs:
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'kubernetes'
       check_ids: 'CKV_K8S_1,CKV_K8S_3,CKV_K8S_9'
@@ -193,7 +193,7 @@ on: [pull_request]
 
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform'
       check_ids: 'CKV_AWS_1,CKV_AWS_3,CKV_AWS_7,CKV_AWS_23'
@@ -211,7 +211,7 @@ jobs:
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'kubernetes'
       check_ids: 'CKV_K8S_1,CKV_K8S_3,CKV_K8S_8,CKV_K8S_9'
@@ -229,7 +229,7 @@ jobs:
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'dockerfile'
       skip_checks: 'CKV_DOCKER_2'  # Skip healthcheck for now
@@ -241,12 +241,12 @@ jobs:
 - All checks except healthcheck
 - Fails on any finding
 
-### Example 4: Multi-Framework Enterprise
+### Example 4: Multi-Framework Production
 
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform,cloudformation,kubernetes'
       severity: 'CRITICAL,HIGH'
@@ -271,7 +271,7 @@ on:
 
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       fail_on_finding: false
       comment_pr: true

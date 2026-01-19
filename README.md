@@ -23,7 +23,7 @@ Scans dependencies and supply chain vulnerabilities using **Trivy**. Generates S
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       severity: 'CRITICAL,HIGH,MEDIUM,LOW'
       fail_on_severity: 'HIGH'
@@ -41,7 +41,7 @@ Analyzes source code for vulnerabilities using **Semgrep**. Supports multiple la
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'python,javascript,go,java'
       rules_path: 'p/owasp-top-ten'
@@ -59,7 +59,7 @@ Scans infrastructure code for misconfigurations using **Checkov**. Supports Terr
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform,kubernetes'
       fail_on_severity: 'HIGH'
@@ -76,7 +76,7 @@ Detects exposed credentials and sensitive information using **TruffleHog**. Scan
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       scan_type: 'filesystem,git'
       only_verified: false
@@ -94,7 +94,7 @@ Unified notification system supporting **Microsoft Teams** and **Slack**. Called
 ```yaml
 - name: Notify Results
   if: always()
-  uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+  uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
   with:
     notification_type: 'vulnerability'
     severity: 'CRITICAL'
@@ -126,28 +126,28 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_severity: 'ERROR'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: true
     secrets:
@@ -156,7 +156,7 @@ jobs:
 
 ### 2. Configure Secrets
 
-Add to your organization/repository secrets:
+Add to your repository secrets:
 - `SECURITY_WEBHOOK`: Webhook URL for notifications (Teams or Slack)
 - `TEAMS_WEBHOOK`: Microsoft Teams webhook (optional)
 - `SLACK_WEBHOOK`: Slack webhook (optional)
@@ -194,7 +194,7 @@ See tool-specific documentation for all options.
 
 ### ✅ Reusable Workflows
 - Call from any repository
-- Consistent scanning across organization
+- Consistent scanning across projects
 - Single source of truth for security policies
 
 ### ✅ Flexible Configuration
@@ -215,11 +215,11 @@ See tool-specific documentation for all options.
 - Minimal false positives
 - Configurable timeouts
 
-### ✅ Enterprise Ready
-- RBAC and approval gates
+### ✅ Production Ready
+- Configurable approval gates
 - Compliance reporting
 - Audit logging
-- Multi-account support
+- Multi-environment support
 
 ## 🛠️ Supported Tools
 
@@ -318,8 +318,6 @@ with:
 
 **Documentation:** Check the [docs](docs/) directory for comprehensive guides
 
-**Issues:** Found a bug? Report it in [GitHub Issues](https://github.com/your-org/appsec-static-scanner/issues)
+**Issues:** Found a bug? Report it in [GitHub Issues](https://github.com/ayoolamakinde/appsec-static-scanner/issues)
 
 **Troubleshooting:** See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
-
-**Support:** Contact the security team for questions

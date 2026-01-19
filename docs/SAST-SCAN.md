@@ -67,7 +67,7 @@ on:
 
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 ```
@@ -94,7 +94,7 @@ rules:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
 ```
 
 ### With Custom Configuration
@@ -102,7 +102,7 @@ jobs:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       severity: 'ERROR,WARNING'
       fail_on_severity: 'ERROR'
@@ -162,7 +162,7 @@ on: [pull_request]
 
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'python'
       rules_path: 'p/security-audit'
@@ -179,7 +179,7 @@ jobs:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'javascript,typescript'
       rules_path: 'p/nodejs'
@@ -196,7 +196,7 @@ jobs:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       rules_path: 'p/owasp-top-ten'
       severity: 'ERROR,WARNING,NOTE'
@@ -229,7 +229,7 @@ Then use:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       config_file: '.semgrep.yml'
       fail_on_finding: true
@@ -245,7 +245,7 @@ on:
 
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_finding: false
       comment_pr: true

@@ -74,8 +74,6 @@ on:
         default: '.semgrep.yml'
         description: 'Path to custom Semgrep config (if exists)'
     secrets:
-      GITHUB_TOKEN:
-        required: false
       SECURITY_WEBHOOK:
         required: false
 
@@ -256,7 +254,7 @@ jobs:
         if: github.event_name == 'pull_request' && inputs.comment_pr == true && steps.analyze.outputs.findings_found == 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          github-token: ${{ github.token }}
           script: |
             let comment = '## 🔎 SAST Scan Results\n\n';
             comment += '### Summary\n';
@@ -284,7 +282,7 @@ jobs:
         uses: actions/github-script@v7
         continue-on-error: true
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          github-token: ${{ github.token }}
           script: |
             const title = `[SAST] Code vulnerabilities detected - ${context.ref_name}`;
             const body = `

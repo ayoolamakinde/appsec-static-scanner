@@ -2,13 +2,13 @@
 
 ## Quick Start
 
-### 1. Create Repository
+### 1. Fork or Reference Repository
 
-Create a new repository named `appsec-static-scanner` in your GitHub organization.
+Fork this repository or reference it directly in your workflows:
 
 ```bash
-# Clone the repo locally
-git clone git@github.com:your-org/appsec-static-scanner.git
+# If forking, clone your fork
+git clone git@github.com:YOUR-USERNAME/appsec-static-scanner.git
 cd appsec-static-scanner
 ```
 
@@ -21,7 +21,7 @@ cd appsec-static-scanner
 4. Click "Configure"
 5. Name: "Security Alerts"
 6. Copy URL
-7. In GitHub: Settings → Secrets → New organization secret
+7. In GitHub: Settings → Secrets → New repository secret
 8. Name: `TEAMS_WEBHOOK`
 9. Paste webhook URL
 
@@ -30,7 +30,7 @@ cd appsec-static-scanner
 2. Browse Apps → Incoming Webhooks
 3. Create New Webhook for your channel
 4. Copy URL
-5. In GitHub: Settings → Secrets → New organization secret
+5. In GitHub: Settings → Secrets → New repository secret
 6. Name: `SLACK_WEBHOOK`
 7. Paste webhook URL
 
@@ -53,28 +53,28 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_severity: 'ERROR'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: true
     secrets:
@@ -93,7 +93,7 @@ Each workflow accepts input parameters for customization. Configure them in the 
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       severity: 'CRITICAL,HIGH,MEDIUM,LOW'
       fail_on_severity: 'HIGH'
@@ -105,7 +105,7 @@ jobs:
 ```yaml
 jobs:
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'python,javascript,go'
       rules_path: 'p/owasp-top-ten'
@@ -116,7 +116,7 @@ jobs:
 ```yaml
 jobs:
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform,kubernetes'
       fail_on_severity: 'HIGH'
@@ -126,7 +126,7 @@ jobs:
 ```yaml
 jobs:
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       scan_type: 'filesystem,git'
       entropy_threshold: 4.0
@@ -184,22 +184,22 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
 
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_severity: 'ERROR'
 
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
 
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: true
 ```
@@ -213,7 +213,7 @@ on:
 
 jobs:
   audit:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'MEDIUM'
 ```
@@ -229,7 +229,7 @@ on:
 
 jobs:
   sast-python:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'python'
       rules_path: 'p/security-audit'
@@ -245,7 +245,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_finding: false  # Warn only
       comment_pr: true
@@ -253,7 +253,7 @@ jobs:
 
 ## Required Permissions
 
-Ensure your GitHub organization/repository has:
+Ensure your GitHub repository has:
 
 ✅ **Actions read/write**
 ✅ **Pull requests write** (for PR comments)
@@ -288,7 +288,7 @@ For storing scan results in S3:
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:your-org/*:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub": "repo:ayoolamakinde/*:ref:refs/heads/main"
         }
       }
     }
@@ -350,7 +350,7 @@ For storing scan results in S3:
 
 ### Secrets Not Found
 
-1. Create secrets in organization settings (not repository)
+1. Create secrets in repository settings
 2. Or override in repository settings
 3. Verify secret names match exactly
 4. Reload workflow after adding secrets
@@ -382,16 +382,16 @@ curl -X POST -H 'Content-Type: application/json' \
 5. ✅ Review results and notifications
 6. ✅ Adjust settings based on findings
 
-## Support
+## Additional Resources
 
 See the documentation in `docs/` directory for:
-- [Notifications Setup](docs/NOTIFICATIONS.md)
-- [SCA Scanning](docs/SCA-SCAN.md)
-- [SAST Scanning](docs/SAST-SCAN.md)
-- [IAC Scanning](docs/IAC-SCAN.md)
-- [Secrets Scanning](docs/SECRETS-SCAN.md)
-- [Best Practices](docs/BEST-PRACTICES.md)
+- [Notifications Setup](NOTIFICATIONS.md)
+- [SCA Scanning](SCA-SCAN.md)
+- [SAST Scanning](SAST-SCAN.md)
+- [IAC Scanning](IAC-SCAN.md)
+- [Secrets Scanning](SECRETS-SCAN.md)
+- [Best Practices](BEST-PRACTICES.md)
 
 ---
 
-**Next Steps**: Read [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) to configure alerting.
+**Next Steps**: Read [NOTIFICATIONS.md](NOTIFICATIONS.md) to configure alerting.

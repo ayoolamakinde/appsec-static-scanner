@@ -63,14 +63,14 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     secrets:
       SECURITY_WEBHOOK: ${{ secrets.SECURITY_WEBHOOK }}
 ```
 
 ### 2. Configure Secrets (Optional)
 
-For notifications, add to organization secrets:
+For notifications, add to repository secrets:
 - `SECURITY_WEBHOOK` - Teams or Slack webhook URL
 
 ---
@@ -82,7 +82,7 @@ For notifications, add to organization secrets:
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
 ```
 
 ### With Custom Configuration
@@ -90,7 +90,7 @@ jobs:
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       severity: 'CRITICAL,HIGH'
       fail_on_severity: 'HIGH'
@@ -143,7 +143,7 @@ on: [pull_request, push]
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       severity: 'CRITICAL,HIGH,MEDIUM,LOW'
       fail_on_severity: 'CRITICAL'
@@ -160,7 +160,7 @@ jobs:
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       generate_sbom: true
       output_format: 'cyclonedx'
@@ -177,7 +177,7 @@ jobs:
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       skip_dirs: 'node_modules,vendor,.git'
       severity: 'HIGH,CRITICAL'
@@ -193,7 +193,7 @@ jobs:
 ```yaml
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       severity: 'CRITICAL,HIGH,MEDIUM,LOW'
       fail_on_severity: 'MEDIUM'
@@ -218,7 +218,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_finding: false
       severity: 'CRITICAL,HIGH'
@@ -233,7 +233,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_finding: true
       fail_on_severity: 'HIGH'
@@ -321,7 +321,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_finding: false
       create_issue: true
@@ -341,7 +341,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'CRITICAL'
       severity: 'CRITICAL,HIGH,MEDIUM'
@@ -360,7 +360,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       generate_sbom: true
       output_format: 'cyclonedx'

@@ -29,7 +29,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_finding: false  # Don't block development
       comment_pr: true
@@ -44,7 +44,7 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
       fail_on_finding: true
@@ -64,22 +64,22 @@ on:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'MEDIUM'
 
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_severity: 'WARNING'
 
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       fail_on_severity: 'MEDIUM'
 
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: true
 ```
@@ -157,7 +157,7 @@ env:
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       create_issue: true
     secrets:
@@ -210,22 +210,22 @@ on: [pull_request]
 
 jobs:
   sca:
-    uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
     with:
       fail_on_severity: 'HIGH'
 
   sast:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       fail_on_severity: 'ERROR'
 
   iac:
-    uses: your-org/appsec-static-scanner/.github/workflows/iac-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/iac-scan.yml@main
     with:
       frameworks: 'terraform,kubernetes'
 
   secrets:
-    uses: your-org/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/secrets-scan.yml@main
     with:
       fail_on_finding: true
 ```
@@ -246,15 +246,15 @@ jobs:
 
       - name: Run SCA
         if: always()
-        uses: your-org/appsec-static-scanner/.github/workflows/sca-scan.yml@main
+        uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sca-scan.yml@main
 
       - name: Run SAST
         if: always()
-        uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+        uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
 
       - name: Notify Results
         if: always()
-        uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+        uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
         with:
           notification_type: 'summary'
 ```
@@ -268,13 +268,13 @@ on: [pull_request]
 
 jobs:
   sast-python:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'python'
       rules_path: 'p/security-audit'
 
   sast-javascript:
-    uses: your-org/appsec-static-scanner/.github/workflows/sast-scan.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/sast-scan.yml@main
     with:
       languages: 'javascript,typescript'
       rules_path: 'p/nodejs'

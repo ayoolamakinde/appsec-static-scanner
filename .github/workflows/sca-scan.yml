@@ -64,9 +64,6 @@ on:
         default: true
         description: 'Comment on PR with results'
     secrets:
-      GITHUB_TOKEN:
-        required: false
-        description: 'GitHub token for API calls'
       SECURITY_WEBHOOK:
         required: false
         description: 'Teams/Slack webhook for notifications'
@@ -244,7 +241,7 @@ jobs:
         if: github.event_name == 'pull_request' && inputs.comment_pr == true && steps.analyze.outputs.vulnerabilities_found == 'true'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          github-token: ${{ github.token }}
           script: |
             const fs = require('fs');
             const path = require('path');
@@ -274,7 +271,7 @@ jobs:
         uses: actions/github-script@v7
         continue-on-error: true
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          github-token: ${{ github.token }}
           script: |
             const title = `[SCA] Vulnerabilities detected - ${context.ref_name}`;
             const body = `

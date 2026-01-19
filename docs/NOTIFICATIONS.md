@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `notify.yml` workflow provides a unified, reusable notification system that supports both **Microsoft Teams** and **Slack**. It enables consistent security alerting across your organization regardless of your preferred communication platform.
+The `notify.yml` workflow provides a unified, reusable notification system that supports both **Microsoft Teams** and **Slack**. It enables consistent security alerting across your projects regardless of your preferred communication platform.
 
 ## Features
 
@@ -32,7 +32,7 @@ The `notify.yml` workflow provides a unified, reusable notification system that 
 4. Copy URL
 5. Store as `SLACK_WEBHOOK` secret
 
-### 2. Add to Organization Secrets
+### 2. Add to Repository Secrets
 
 ```bash
 # GitHub CLI
@@ -58,7 +58,7 @@ jobs:
   notify:
     needs: scan
     if: ${{ needs.scan.outputs.findings > 0 }}
-    uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
     with:
       notification_type: 'vulnerability'
       tool_name: 'Trivy'
@@ -151,7 +151,7 @@ jobs:
   notify:
     if: needs.sca.outputs.found == 'true'
     needs: sca
-    uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
     with:
       notification_type: 'vulnerability'
       tool_name: 'Trivy (SCA)'
@@ -185,7 +185,7 @@ jobs:
   critical-alert:
     if: needs.secrets.outputs.found == 'true'
     needs: secrets
-    uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
     with:
       notification_type: 'secret'
       tool_name: 'TruffleHog'
@@ -218,7 +218,7 @@ jobs:
   notify-critical:
     if: needs.scan.outputs.critical > 0
     needs: scan
-    uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
     with:
       notification_type: 'vulnerability'
       tool_name: 'Trivy'
@@ -231,7 +231,7 @@ jobs:
   notify-high:
     if: needs.scan.outputs.high > 0
     needs: scan
-    uses: your-org/appsec-static-scanner/.github/workflows/notify.yml@main
+    uses: ayoolamakinde/appsec-static-scanner/.github/workflows/notify.yml@main
     with:
       notification_type: 'vulnerability'
       tool_name: 'Trivy'
