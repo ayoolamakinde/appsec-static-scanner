@@ -141,13 +141,10 @@ jobs:
             EXCLUDE_FLAGS="$EXCLUDE_FLAGS --exclude $(echo $pattern | xargs)"
           done
           
-          # Build language filters
+          # Build language filters (semgrep uses comma-separated format)
           LANG_FLAGS=""
           if [ -n "${{ inputs.languages }}" ]; then
-            IFS=',' read -ra LANGS <<< "${{ inputs.languages }}"
-            for lang in "${LANGS[@]}"; do
-              LANG_FLAGS="$LANG_FLAGS -l $(echo $lang | xargs)"
-            done
+            LANG_FLAGS="-l ${{ inputs.languages }}"
           fi
           
           # Build config flags

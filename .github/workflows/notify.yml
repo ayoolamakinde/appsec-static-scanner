@@ -189,6 +189,12 @@ jobs:
         if: steps.channel.outputs.slack_enabled == 'true'
         continue-on-error: true
         run: |
+          # Verify webhook URL exists before attempting to send
+          if [ -z "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            echo "⚠️ Slack webhook not configured, skipping notification"
+            exit 0
+          fi
+          
           PAYLOAD=$(cat <<EOF
           {
             "blocks": [
