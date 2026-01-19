@@ -282,6 +282,7 @@ jobs:
 
       - name: Notification Summary
         if: always()
+        continue-on-error: true
         run: |
           echo "📢 Notification Summary"
           echo "======================="

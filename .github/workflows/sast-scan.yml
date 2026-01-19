@@ -141,11 +141,11 @@ jobs:
             EXCLUDE_FLAGS="$EXCLUDE_FLAGS --exclude $(echo $pattern | xargs)"
           done
           
-          # Build language filters (semgrep uses comma-separated format)
+          # Build language filters (convert comma-separated to individual -l flags, but semgrep doesn't support repeated -l)
+          # Instead, we'll skip language filtering as semgrep auto-detects languages
           LANG_FLAGS=""
-          if [ -n "${{ inputs.languages }}" ]; then
-            LANG_FLAGS="-l ${{ inputs.languages }}"
-          fi
+          # Note: Semgrep automatically detects and scans all supported languages
+          # Use --include patterns if you need to restrict specific file types
           
           # Build config flags
           if [ "${{ steps.config.outputs.use_custom }}" = "true" ]; then
