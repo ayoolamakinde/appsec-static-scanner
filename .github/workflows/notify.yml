@@ -44,6 +44,7 @@ jobs:
     steps:
       - name: Determine Notification Channel
         id: channel
+        continue-on-error: true
         run: |
           if [ -n "${{ secrets.TEAMS_WEBHOOK }}" ]; then
             echo "teams_enabled=true" >> $GITHUB_OUTPUT
@@ -64,6 +65,7 @@ jobs:
 
       - name: Prepare Notification Data
         id: prepare
+        continue-on-error: true
         run: |
           # Determine emoji and color based on severity
           case "${{ inputs.severity }}" in
