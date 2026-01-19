@@ -173,7 +173,7 @@ jobs:
           fi
           
           # Build output flags
-          OUTPUT_FLAGS="--format ${{ inputs.output_format }}"
+          OUTPUT_FLAGS="-o ${{ inputs.output_format }}"
           if [ "${{ inputs.compact_output }}" = "true" ]; then
             OUTPUT_FLAGS="$OUTPUT_FLAGS --compact"
           fi
@@ -189,7 +189,7 @@ jobs:
             $SKIP_CHECK_FLAGS \
             $CONFIG_FLAG \
             $OUTPUT_FLAGS \
-            --output-file iac-results.${{ inputs.output_format }} || true
+            --output-file-path iac-results.${{ inputs.output_format }} || true
           
           echo "✅ IAC scan completed"
           echo "scan_status=completed" >> $GITHUB_OUTPUT

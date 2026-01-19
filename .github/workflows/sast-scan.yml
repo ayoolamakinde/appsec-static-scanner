@@ -158,12 +158,20 @@ jobs:
           fi
           
           # Run scan
+          FORMAT_FLAG=""
+          case "${{ inputs.output_format }}" in
+            json) FORMAT_FLAG="--json" ;;
+            sarif) FORMAT_FLAG="--sarif" ;;
+            csv) FORMAT_FLAG="--csv" ;;
+            *) FORMAT_FLAG="--json" ;;
+          esac
+          
           semgrep scan \
             $CONFIG_FLAG \
             $LANG_FLAGS \
             $EXCLUDE_FLAGS \
-            --format ${{ inputs.output_format }} \
-            --output sast-results.${{ inputs.output_format }} \
+            $FORMAT_FLAG \
+            -o sast-results.${{ inputs.output_format }} \
             --timeout ${{ env.SEMGREP_TIMEOUT }} \
             . || true
           
