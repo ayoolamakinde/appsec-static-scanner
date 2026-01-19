@@ -1,0 +1,368 @@
+name: IAC - Infrastructure as Code Scanning
+
+on:
+  workflow_call:
+    inputs:
+      frameworks:
+        required: false
+        type: string
+        default: 'terraform,cloudformation,kubernetes,dockerfile'
+        description: 'Frameworks to scan: terraform, cloudformation, kubernetes, dockerfile, arm, bicep, etc.'
+      check_ids:
+        required: false
+        type: string
+        description: 'Specific check IDs to run (comma-separated), empty = all checks'
+      skip_checks:
+        required: false
+        type: string
+        description: 'Check IDs to skip (comma-separated)'
+      skip_paths:
+        required: false
+        type: string
+        default: '.git,.venv,node_modules,vendor,examples,tests'
+        description: 'Paths to exclude from scanning'
+      severity:
+        required: false
+        type: string
+        default: 'CRITICAL,HIGH'
+        description: 'Severity levels: CRITICAL, HIGH, MEDIUM, LOW, INFO'
+      fail_on_severity:
+        required: false
+        type: string
+        default: 'CRITICAL'
+        description: 'Fail on this severity or higher'
+      output_format:
+        required: false
+        type: string
+        default: 'json'
+        description: 'Output format: json, junitxml, sarif, csv'
+      compact_output:
+        required: false
+        type: boolean
+        default: false
+        description: 'Compact output format'
+      quiet_mode:
+        required: false
+        type: boolean
+        default: false
+        description: 'Reduce output verbosity'
+      download_external_modules:
+        required: false
+        type: boolean
+        default: true
+        description: 'Download external modules (Terraform)'
+      fail_on_finding:
+        required: false
+        type: boolean
+        default: true
+        description: 'Fail workflow if violations found'
+      continue_on_error:
+        required: false
+        type: boolean
+        default: false
+        description: 'Continue even if scan fails'
+      upload_artifacts:
+        required: false
+        type: boolean
+        default: true
+        description: 'Upload results as artifacts'
+      create_issue:
+        required: false
+        type: boolean
+        default: false
+        description: 'Create GitHub issue for violations'
+      comment_pr:
+        required: false
+        type: boolean
+        default: true
+        description: 'Comment PR with results'
+      config_file:
+        required: false
+        type: string
+        default: '.checkov.yaml'
+        description: 'Path to custom Checkov config'
+    secrets:
+      GITHUB_TOKEN:
+        required: false
+      SECURITY_WEBHOOK:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  CHECKOV_FRAMEWORK: ${{ inputs.frameworks }}
+
+jobs:
+  iac-scan:
+    name: IAC Vulnerability Scan
+    runs-on: ubuntu-latest
+    outputs:
+      violations_found: ${{ steps.analyze.outputs.violations_found }}
+      critical_count: ${{ steps.analyze.outputs.critical_count }}
+      high_count: ${{ steps.analyze.outputs.high_count }}
+      medium_count: ${{ steps.analyze.outputs.medium_count }}
+      low_count: ${{ steps.analyze.outputs.low_count }}
+      scan_status: ${{ steps.analyze.outputs.scan_status }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Checkov
+        id: install
+        continue-on-error: true
+        run: |
+          echo "📦 Installing Checkov..."
+          pip3 install checkov --upgrade
+          checkov --version
+          echo "✅ Checkov installed"
+
+      - name: Validate Configuration
+        id: config
+        continue-on-error: true
+        run: |
+          CONFIG_FILE="${{ inputs.config_file }}"
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "✅ Custom config found: $CONFIG_FILE"
+            echo "use_custom=true" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️ Using default configuration"
+            echo "use_custom=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run IAC Scan
+        id: scan
+        continue-on-error: ${{ inputs.continue_on_error }}
+        run: |
+          echo "🔍 Running Checkov IAC scan..."
+          
+          # Build framework flags
+          FRAMEWORK_FLAGS=""
+          if [ -n "${{ inputs.frameworks }}" ]; then
+            IFS=',' read -ra FRAMEWORKS <<< "${{ inputs.frameworks }}"
+            for fw in "${FRAMEWORKS[@]}"; do
+              FRAMEWORK_FLAGS="$FRAMEWORK_FLAGS --framework $(echo $fw | xargs)"
+            done
+          fi
+          
+          # Build skip path flags
+          SKIP_FLAGS=""
+          IFS=',' read -ra SKIP_PATHS <<< "${{ inputs.skip_paths }}"
+          for path in "${SKIP_PATHS[@]}"; do
+            SKIP_FLAGS="$SKIP_FLAGS --skip-path $(echo $path | xargs)"
+          done
+          
+          # Build severity filter
+          SEVERITY_FLAGS="--check"
+          
+          # Build skip checks
+          SKIP_CHECK_FLAGS=""
+          if [ -n "${{ inputs.skip_checks }}" ]; then
+            SKIP_CHECK_FLAGS="--skip-check ${{ inputs.skip_checks }}"
+          fi
+          
+          # Build config flag
+          CONFIG_FLAG=""
+          if [ "${{ steps.config.outputs.use_custom }}" = "true" ]; then
+            CONFIG_FLAG="--config-file ${{ inputs.config_file }}"
+          fi
+          
+          # Build output flags
+          OUTPUT_FLAGS="--format ${{ inputs.output_format }}"
+          if [ "${{ inputs.compact_output }}" = "true" ]; then
+            OUTPUT_FLAGS="$OUTPUT_FLAGS --compact"
+          fi
+          if [ "${{ inputs.quiet_mode }}" = "true" ]; then
+            OUTPUT_FLAGS="$OUTPUT_FLAGS --quiet"
+          fi
+          
+          # Run scan
+          checkov \
+            --directory . \
+            $FRAMEWORK_FLAGS \
+            $SKIP_FLAGS \
+            $SKIP_CHECK_FLAGS \
+            $CONFIG_FLAG \
+            $OUTPUT_FLAGS \
+            --output-file iac-results.${{ inputs.output_format }} || true
+          
+          echo "✅ IAC scan completed"
+          echo "scan_status=completed" >> $GITHUB_OUTPUT
+
+      - name: Analyze Results
+        id: analyze
+        if: always()
+        run: |
+          echo "📊 Analyzing IAC results..."
+          
+          if [ ! -f "iac-results.${{ inputs.output_format }}" ]; then
+            echo "⚠️ No scan results found"
+            echo "violations_found=false" >> $GITHUB_OUTPUT
+            echo "critical_count=0" >> $GITHUB_OUTPUT
+            echo "high_count=0" >> $GITHUB_OUTPUT
+            echo "medium_count=0" >> $GITHUB_OUTPUT
+            echo "low_count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          if [ "${{ inputs.output_format }}" = "json" ]; then
+            CRITICAL=$(cat iac-results.json | jq '[.check_type_to_results[]?.results[][]? | select(.check_result.result=="failed") | select(.check_severity=="critical")] | length' 2>/dev/null || echo "0")
+            HIGH=$(cat iac-results.json | jq '[.check_type_to_results[]?.results[][]? | select(.check_result.result=="failed") | select(.check_severity=="high")] | length' 2>/dev/null || echo "0")
+            MEDIUM=$(cat iac-results.json | jq '[.check_type_to_results[]?.results[][]? | select(.check_result.result=="failed") | select(.check_severity=="medium")] | length' 2>/dev/null || echo "0")
+            LOW=$(cat iac-results.json | jq '[.check_type_to_results[]?.results[][]? | select(.check_result.result=="failed") | select(.check_severity=="low")] | length' 2>/dev/null || echo "0")
+          else
+            CRITICAL=$(grep -c "CRITICAL" iac-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            HIGH=$(grep -c "HIGH" iac-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            MEDIUM=$(grep -c "MEDIUM" iac-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            LOW=$(grep -c "LOW" iac-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+          fi
+          
+          TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+          
+          echo "critical_count=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high_count=$HIGH" >> $GITHUB_OUTPUT
+          echo "medium_count=$MEDIUM" >> $GITHUB_OUTPUT
+          echo "low_count=$LOW" >> $GITHUB_OUTPUT
+          
+          if [ $TOTAL -gt 0 ]; then
+            echo "violations_found=true" >> $GITHUB_OUTPUT
+            echo "📋 Violations found:"
+            echo "  - CRITICAL: $CRITICAL"
+            echo "  - HIGH: $HIGH"
+            echo "  - MEDIUM: $MEDIUM"
+            echo "  - LOW: $LOW"
+          else
+            echo "violations_found=false" >> $GITHUB_OUTPUT
+            echo "✅ No violations found"
+          fi
+
+      - name: Upload Artifacts
+        if: inputs.upload_artifacts == true && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iac-scan-results
+          path: |
+            iac-results.*
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && inputs.comment_pr == true && steps.analyze.outputs.violations_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            let comment = '## 🏗️ IAC Scan Results\n\n';
+            comment += '### Summary\n';
+            comment += '| Severity | Count |\n';
+            comment += '|----------|-------|\n';
+            comment += '| 🔴 CRITICAL | ${{ steps.analyze.outputs.critical_count }} |\n';
+            comment += '| 🟠 HIGH | ${{ steps.analyze.outputs.high_count }} |\n';
+            comment += '| 🟡 MEDIUM | ${{ steps.analyze.outputs.medium_count }} |\n';
+            comment += '| 🔵 LOW | ${{ steps.analyze.outputs.low_count }} |\n\n';
+            
+            comment += '### Details\n';
+            comment += 'View detailed violations in the artifacts.\n\n';
+            comment += '**Frameworks Scanned**: ${{ inputs.frameworks }}\n\n';
+            comment += '_🏗️ Scan: Checkov (IAC Misconfigurations)_\n';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create Issue for Violations
+        if: inputs.create_issue == true && steps.analyze.outputs.violations_found == 'true'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            const title = `[IAC] Configuration violations detected - ${context.ref_name}`;
+            const body = `
+            ## 🏗️ IAC Scan Results
+            
+            Found infrastructure configuration violations:
+            - **CRITICAL**: ${{ steps.analyze.outputs.critical_count }}
+            - **HIGH**: ${{ steps.analyze.outputs.high_count }}
+            - **MEDIUM**: ${{ steps.analyze.outputs.medium_count }}
+            - **LOW**: ${{ steps.analyze.outputs.low_count }}
+            
+            ### Action Required
+            Update infrastructure code to comply with best practices and security standards.
+            
+            **Frameworks**: ${{ inputs.frameworks }}
+            
+            **Run Details**: [View Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'iac', 'infrastructure']
+            });
+
+      - name: Determine Severity Level
+        id: severity
+        if: always()
+        run: |
+          CRITICAL=${{ steps.analyze.outputs.critical_count }}
+          HIGH=${{ steps.analyze.outputs.high_count }}
+          
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "level=CRITICAL" >> $GITHUB_OUTPUT
+          elif [ "$HIGH" -gt 0 ]; then
+            echo "level=HIGH" >> $GITHUB_OUTPUT
+          else
+            echo "level=MEDIUM" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "📊 IAC Scan Summary"
+          echo "=================="
+          echo "Status: ${{ steps.analyze.outputs.scan_status }}"
+          echo "Violations Found: ${{ steps.analyze.outputs.violations_found }}"
+          echo "CRITICAL: ${{ steps.analyze.outputs.critical_count }}"
+          echo "HIGH: ${{ steps.analyze.outputs.high_count }}"
+          echo "MEDIUM: ${{ steps.analyze.outputs.medium_count }}"
+          echo "LOW: ${{ steps.analyze.outputs.low_count }}"
+
+      - name: Fail Workflow if Required
+        if: inputs.fail_on_finding == true && steps.analyze.outputs.violations_found == 'true'
+        run: |
+          CRITICAL=${{ steps.analyze.outputs.critical_count }}
+          FAIL_LEVEL="${{ inputs.fail_on_severity }}"
+          
+          case "$FAIL_LEVEL" in
+            CRITICAL)
+              if [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: Critical IAC violations found"
+                exit 1
+              fi
+              ;;
+            HIGH)
+              if [ "${{ steps.analyze.outputs.high_count }}" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: High/Critical violations found"
+                exit 1
+              fi
+              ;;
+            MEDIUM)
+              if [ "${{ steps.analyze.outputs.medium_count }}" -gt 0 ] || [ "${{ steps.analyze.outputs.high_count }}" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: Medium/High/Critical violations found"
+                exit 1
+              fi
+              ;;
+          esac

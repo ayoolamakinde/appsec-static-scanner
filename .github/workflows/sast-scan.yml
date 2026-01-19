@@ -1,0 +1,363 @@
+name: SAST - Static Application Security Testing
+
+on:
+  workflow_call:
+    inputs:
+      severity:
+        required: false
+        type: string
+        default: 'ERROR,WARNING'
+        description: 'Comma-separated severity levels: ERROR, WARNING, NOTE'
+      fail_on_severity:
+        required: false
+        type: string
+        default: 'ERROR'
+        description: 'Fail workflow on this severity or higher'
+      languages:
+        required: false
+        type: string
+        default: 'python,javascript,go,java,typescript,csharp,ruby,php,rust'
+        description: 'Comma-separated languages to scan'
+      rules_path:
+        required: false
+        type: string
+        default: 'p/owasp-top-ten'
+        description: 'Semgrep rules to use (p/ prefix for rulesets)'
+      skip_patterns:
+        required: false
+        type: string
+        default: 'node_modules,vendor,.git,dist,build,tests,__pycache__'
+        description: 'Patterns to exclude from scanning'
+      output_format:
+        required: false
+        type: string
+        default: 'json'
+        description: 'Output format: json, sarif, csv'
+      max_retries:
+        required: false
+        type: number
+        default: 3
+        description: 'Maximum number of retries'
+      fail_on_finding:
+        required: false
+        type: boolean
+        default: true
+        description: 'Fail workflow if vulnerabilities found'
+      continue_on_error:
+        required: false
+        type: boolean
+        default: false
+        description: 'Continue workflow even if scan fails'
+      upload_artifacts:
+        required: false
+        type: boolean
+        default: true
+        description: 'Upload scan results as artifacts'
+      upload_sarif:
+        required: false
+        type: boolean
+        default: true
+        description: 'Upload SARIF results to GitHub Security'
+      create_issue:
+        required: false
+        type: boolean
+        default: false
+        description: 'Create GitHub issue for findings'
+      comment_pr:
+        required: false
+        type: boolean
+        default: true
+        description: 'Comment on PR with results'
+      config_file:
+        required: false
+        type: string
+        default: '.semgrep.yml'
+        description: 'Path to custom Semgrep config (if exists)'
+    secrets:
+      GITHUB_TOKEN:
+        required: false
+      SECURITY_WEBHOOK:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+  security-events: write
+
+env:
+  SEMGREP_VERSION: latest
+  SEMGREP_TIMEOUT: 30
+
+jobs:
+  sast-scan:
+    name: SAST Code Analysis
+    runs-on: ubuntu-latest
+    outputs:
+      findings_found: ${{ steps.analyze.outputs.findings_found }}
+      error_count: ${{ steps.analyze.outputs.error_count }}
+      warning_count: ${{ steps.analyze.outputs.warning_count }}
+      note_count: ${{ steps.analyze.outputs.note_count }}
+      scan_status: ${{ steps.analyze.outputs.scan_status }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Semgrep
+        id: install
+        continue-on-error: true
+        run: |
+          echo "📦 Installing Semgrep..."
+          pip3 install semgrep --upgrade
+          semgrep --version
+          echo "✅ Semgrep installed"
+
+      - name: Validate Configuration
+        id: config
+        continue-on-error: true
+        run: |
+          CONFIG_FILE="${{ inputs.config_file }}"
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "✅ Custom config found: $CONFIG_FILE"
+            echo "use_custom=true" >> $GITHUB_OUTPUT
+          else
+            echo "ℹ️ Using default rules: ${{ inputs.rules_path }}"
+            echo "use_custom=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run SAST Scan
+        id: scan
+        continue-on-error: ${{ inputs.continue_on_error }}
+        run: |
+          echo "🔍 Running Semgrep SAST scan..."
+          
+          # Build exclude patterns
+          EXCLUDE_FLAGS=""
+          IFS=',' read -ra PATTERNS <<< "${{ inputs.skip_patterns }}"
+          for pattern in "${PATTERNS[@]}"; do
+            EXCLUDE_FLAGS="$EXCLUDE_FLAGS --exclude $(echo $pattern | xargs)"
+          done
+          
+          # Build language filters
+          LANG_FLAGS=""
+          if [ -n "${{ inputs.languages }}" ]; then
+            IFS=',' read -ra LANGS <<< "${{ inputs.languages }}"
+            for lang in "${LANGS[@]}"; do
+              LANG_FLAGS="$LANG_FLAGS -l $(echo $lang | xargs)"
+            done
+          fi
+          
+          # Build config flags
+          if [ "${{ steps.config.outputs.use_custom }}" = "true" ]; then
+            CONFIG_FLAG="--config ${{ inputs.config_file }}"
+          else
+            CONFIG_FLAG="--config ${{ inputs.rules_path }}"
+          fi
+          
+          # Run scan
+          semgrep scan \
+            $CONFIG_FLAG \
+            $LANG_FLAGS \
+            $EXCLUDE_FLAGS \
+            --format ${{ inputs.output_format }} \
+            --output sast-results.${{ inputs.output_format }} \
+            --timeout ${{ env.SEMGREP_TIMEOUT }} \
+            . || true
+          
+          echo "✅ SAST scan completed"
+          echo "scan_status=completed" >> $GITHUB_OUTPUT
+
+      - name: Generate SARIF Report
+        id: sarif
+        if: inputs.upload_sarif == true
+        continue-on-error: true
+        run: |
+          echo "📋 Generating SARIF report..."
+          
+          if [ -f "sast-results.json" ]; then
+            semgrep scan \
+              --config ${{ inputs.rules_path }} \
+              --format sarif \
+              --output sast-results.sarif \
+              . || true
+            
+            if [ -f "sast-results.sarif" ]; then
+              echo "✅ SARIF report generated"
+              echo "sarif_path=sast-results.sarif" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Upload SARIF to GitHub Security
+        if: inputs.upload_sarif == true && steps.sarif.outputs.sarif_path != ''
+        uses: github/codeql-action/upload-sarif@v2
+        continue-on-error: true
+        with:
+          sarif_file: sast-results.sarif
+          category: semgrep
+
+      - name: Analyze Results
+        id: analyze
+        if: always()
+        run: |
+          echo "📊 Analyzing SAST results..."
+          
+          if [ ! -f "sast-results.${{ inputs.output_format }}" ]; then
+            echo "⚠️ No scan results found"
+            echo "findings_found=false" >> $GITHUB_OUTPUT
+            echo "error_count=0" >> $GITHUB_OUTPUT
+            echo "warning_count=0" >> $GITHUB_OUTPUT
+            echo "note_count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          if [ "${{ inputs.output_format }}" = "json" ]; then
+            ERRORS=$(cat sast-results.json | jq '[.results[]? | select(.level=="ERROR")] | length' 2>/dev/null || echo "0")
+            WARNINGS=$(cat sast-results.json | jq '[.results[]? | select(.level=="WARNING")] | length' 2>/dev/null || echo "0")
+            NOTES=$(cat sast-results.json | jq '[.results[]? | select(.level=="NOTE")] | length' 2>/dev/null || echo "0")
+          else
+            ERRORS=$(grep -c "ERROR" sast-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            WARNINGS=$(grep -c "WARNING" sast-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            NOTES=$(grep -c "NOTE" sast-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+          fi
+          
+          TOTAL=$((ERRORS + WARNINGS + NOTES))
+          
+          echo "error_count=$ERRORS" >> $GITHUB_OUTPUT
+          echo "warning_count=$WARNINGS" >> $GITHUB_OUTPUT
+          echo "note_count=$NOTES" >> $GITHUB_OUTPUT
+          
+          if [ $TOTAL -gt 0 ]; then
+            echo "findings_found=true" >> $GITHUB_OUTPUT
+            echo "📋 Findings detected:"
+            echo "  - ERRORS: $ERRORS"
+            echo "  - WARNINGS: $WARNINGS"
+            echo "  - NOTES: $NOTES"
+          else
+            echo "findings_found=false" >> $GITHUB_OUTPUT
+            echo "✅ No findings detected"
+          fi
+
+      - name: Upload Artifacts
+        if: inputs.upload_artifacts == true && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-scan-results
+          path: |
+            sast-results.*
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && inputs.comment_pr == true && steps.analyze.outputs.findings_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            let comment = '## 🔎 SAST Scan Results\n\n';
+            comment += '### Summary\n';
+            comment += '| Severity | Count |\n';
+            comment += '|----------|-------|\n';
+            comment += '| 🔴 ERROR | ${{ steps.analyze.outputs.error_count }} |\n';
+            comment += '| 🟠 WARNING | ${{ steps.analyze.outputs.warning_count }} |\n';
+            comment += '| 🔵 NOTE | ${{ steps.analyze.outputs.note_count }} |\n\n';
+            
+            comment += '### Details\n';
+            comment += 'View detailed findings in:\n';
+            comment += '- Artifacts: `sast-scan-results`\n';
+            comment += '- GitHub Security tab (if SARIF uploaded)\n\n';
+            comment += '_🔍 Scan: Semgrep (SAST - Code Vulnerabilities)_\n';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create Issue for Findings
+        if: inputs.create_issue == true && steps.analyze.outputs.findings_found == 'true'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            const title = `[SAST] Code vulnerabilities detected - ${context.ref_name}`;
+            const body = `
+            ## 🔎 SAST Scan Results
+            
+            Found code vulnerabilities:
+            - **ERRORS**: ${{ steps.analyze.outputs.error_count }}
+            - **WARNINGS**: ${{ steps.analyze.outputs.warning_count }}
+            - **NOTES**: ${{ steps.analyze.outputs.note_count }}
+            
+            ### Action Required
+            Review findings and fix security issues before merging.
+            
+            **Rules Used**: ${{ inputs.rules_path }}
+            **Languages**: ${{ inputs.languages }}
+            
+            **Run Details**: [View Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'sast', 'code-review']
+            });
+
+      - name: Determine Severity Level
+        id: severity
+        if: always()
+        run: |
+          ERRORS=${{ steps.analyze.outputs.error_count }}
+          
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "level=CRITICAL" >> $GITHUB_OUTPUT
+          else
+            echo "level=MEDIUM" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "📊 SAST Scan Summary"
+          echo "==================="
+          echo "Status: ${{ steps.analyze.outputs.scan_status }}"
+          echo "Findings Found: ${{ steps.analyze.outputs.findings_found }}"
+          echo "ERRORS: ${{ steps.analyze.outputs.error_count }}"
+          echo "WARNINGS: ${{ steps.analyze.outputs.warning_count }}"
+          echo "NOTES: ${{ steps.analyze.outputs.note_count }}"
+
+      - name: Fail Workflow if Required
+        if: inputs.fail_on_finding == true && steps.analyze.outputs.findings_found == 'true'
+        run: |
+          ERRORS=${{ steps.analyze.outputs.error_count }}
+          FAIL_LEVEL="${{ inputs.fail_on_severity }}"
+          
+          case "$FAIL_LEVEL" in
+            ERROR)
+              if [ "$ERRORS" -gt 0 ]; then
+                echo "❌ Failing: Code vulnerabilities (ERROR level) found"
+                exit 1
+              fi
+              ;;
+            WARNING)
+              if [ "${{ steps.analyze.outputs.warning_count }}" -gt 0 ] || [ "$ERRORS" -gt 0 ]; then
+                echo "❌ Failing: Code vulnerabilities (WARNING/ERROR level) found"
+                exit 1
+              fi
+              ;;
+            NOTE)
+              if [ "${{ steps.analyze.outputs.note_count }}" -gt 0 ] || [ "${{ steps.analyze.outputs.warning_count }}" -gt 0 ] || [ "$ERRORS" -gt 0 ]; then
+                echo "❌ Failing: Any findings detected"
+                exit 1
+              fi
+              ;;
+          esac

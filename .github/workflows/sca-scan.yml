@@ -1,0 +1,355 @@
+name: SCA - Software Composition Analysis
+
+on:
+  workflow_call:
+    inputs:
+      severity:
+        required: false
+        type: string
+        default: 'HIGH,CRITICAL'
+        description: 'Comma-separated severity levels to report: CRITICAL, HIGH, MEDIUM, LOW'
+      fail_on_severity:
+        required: false
+        type: string
+        default: 'CRITICAL'
+        description: 'Fail workflow on this severity or higher'
+      skip_dirs:
+        required: false
+        type: string
+        default: 'node_modules,vendor,.venv,venv,.git,dist,build'
+        description: 'Comma-separated directories to skip'
+      output_format:
+        required: false
+        type: string
+        default: 'json'
+        description: 'Output format: json, sarif, table, cyclonedx'
+      scan_hidden:
+        required: false
+        type: boolean
+        default: false
+        description: 'Scan hidden files and directories'
+      generate_sbom:
+        required: false
+        type: boolean
+        default: true
+        description: 'Generate SBOM (Software Bill of Materials)'
+      max_retries:
+        required: false
+        type: number
+        default: 3
+        description: 'Maximum number of retries for failed scans'
+      fail_on_finding:
+        required: false
+        type: boolean
+        default: true
+        description: 'Fail workflow if vulnerabilities found'
+      continue_on_error:
+        required: false
+        type: boolean
+        default: false
+        description: 'Continue workflow even if scan fails'
+      upload_artifacts:
+        required: false
+        type: boolean
+        default: true
+        description: 'Upload scan results as artifacts'
+      create_issue:
+        required: false
+        type: boolean
+        default: false
+        description: 'Create GitHub issue for vulnerabilities'
+      comment_pr:
+        required: false
+        type: boolean
+        default: true
+        description: 'Comment on PR with results'
+    secrets:
+      GITHUB_TOKEN:
+        required: false
+        description: 'GitHub token for API calls'
+      SECURITY_WEBHOOK:
+        required: false
+        description: 'Teams/Slack webhook for notifications'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  TRIVY_CACHE_DIR: ${{ github.workspace }}/.trivy-cache
+  TRIVY_FORMAT: ${{ inputs.output_format }}
+
+jobs:
+  sca-scan:
+    name: SCA Vulnerability Scan
+    runs-on: ubuntu-latest
+    outputs:
+      vulnerabilities_found: ${{ steps.analyze.outputs.vulnerabilities_found }}
+      critical_count: ${{ steps.analyze.outputs.critical_count }}
+      high_count: ${{ steps.analyze.outputs.high_count }}
+      medium_count: ${{ steps.analyze.outputs.medium_count }}
+      low_count: ${{ steps.analyze.outputs.low_count }}
+      scan_status: ${{ steps.analyze.outputs.scan_status }}
+      sbom_path: ${{ steps.sbom.outputs.sbom_path }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Trivy Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TRIVY_CACHE_DIR }}
+          key: trivy-${{ runner.os }}-${{ hashFiles('**/go.mod', '**/package.json', '**/requirements.txt') }}
+          restore-keys: |
+            trivy-${{ runner.os }}-
+
+      - name: Install Trivy
+        id: install
+        continue-on-error: true
+        run: |
+          echo "📦 Installing Trivy..."
+          
+          # Detect OS and architecture
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          
+          if [ "$ARCH" = "x86_64" ]; then
+            ARCH="x64"
+          elif [ "$ARCH" = "aarch64" ]; then
+            ARCH="arm64"
+          fi
+          
+          # Download latest Trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          
+          trivy --version
+          echo "✅ Trivy installed successfully"
+
+      - name: Run SCA Scan (Filesystem)
+        id: scan
+        continue-on-error: ${{ inputs.continue_on_error }}
+        run: |
+          echo "🔍 Running Trivy SCA scan..."
+          
+          SKIP_DIRS="${{ inputs.skip_dirs }}"
+          SCAN_HIDDEN="${{ inputs.scan_hidden }}"
+          
+          # Build skip flags
+          SKIP_FLAGS=""
+          if [ -n "$SKIP_DIRS" ]; then
+            IFS=',' read -ra DIRS <<< "$SKIP_DIRS"
+            for dir in "${DIRS[@]}"; do
+              SKIP_FLAGS="$SKIP_FLAGS --skip-dirs $(echo $dir | xargs)"
+            done
+          fi
+          
+          # Build scan command
+          CMD="trivy fs \
+            --format ${{ inputs.output_format }} \
+            --severity ${{ inputs.severity }} \
+            --output sca-results.${{ inputs.output_format }} \
+            $SKIP_FLAGS"
+          
+          # Add hidden files flag if enabled
+          if [ "$SCAN_HIDDEN" = "true" ]; then
+            CMD="$CMD --scanners config,secret"
+          fi
+          
+          # Run scan
+          eval "$CMD ."
+          
+          echo "✅ SCA scan completed"
+          echo "scan_status=completed" >> $GITHUB_OUTPUT
+
+      - name: Analyze Results
+        id: analyze
+        if: always()
+        run: |
+          echo "📊 Analyzing scan results..."
+          
+          if [ ! -f "sca-results.${{ inputs.output_format }}" ]; then
+            echo "⚠️ No scan results found"
+            echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+            echo "critical_count=0" >> $GITHUB_OUTPUT
+            echo "high_count=0" >> $GITHUB_OUTPUT
+            echo "medium_count=0" >> $GITHUB_OUTPUT
+            echo "low_count=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          if [ "${{ inputs.output_format }}" = "json" ]; then
+            CRITICAL=$(cat sca-results.json | jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="CRITICAL")] | length' 2>/dev/null || echo "0")
+            HIGH=$(cat sca-results.json | jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="HIGH")] | length' 2>/dev/null || echo "0")
+            MEDIUM=$(cat sca-results.json | jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="MEDIUM")] | length' 2>/dev/null || echo "0")
+            LOW=$(cat sca-results.json | jq '[.Results[]?.Misconfigurations[]? | select(.Severity=="LOW")] | length' 2>/dev/null || echo "0")
+          else
+            CRITICAL=$(grep -c "CRITICAL" sca-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            HIGH=$(grep -c "HIGH" sca-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            MEDIUM=$(grep -c "MEDIUM" sca-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+            LOW=$(grep -c "LOW" sca-results.${{ inputs.output_format }} 2>/dev/null || echo "0")
+          fi
+          
+          TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+          
+          echo "critical_count=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high_count=$HIGH" >> $GITHUB_OUTPUT
+          echo "medium_count=$MEDIUM" >> $GITHUB_OUTPUT
+          echo "low_count=$LOW" >> $GITHUB_OUTPUT
+          
+          if [ $TOTAL -gt 0 ]; then
+            echo "vulnerabilities_found=true" >> $GITHUB_OUTPUT
+            echo "📋 Vulnerabilities found:"
+            echo "  - CRITICAL: $CRITICAL"
+            echo "  - HIGH: $HIGH"
+            echo "  - MEDIUM: $MEDIUM"
+            echo "  - LOW: $LOW"
+          else
+            echo "vulnerabilities_found=false" >> $GITHUB_OUTPUT
+            echo "✅ No vulnerabilities found"
+          fi
+
+      - name: Generate SBOM
+        id: sbom
+        if: inputs.generate_sbom == true
+        continue-on-error: true
+        run: |
+          echo "📦 Generating SBOM..."
+          trivy fs --format cyclonedx --output sbom.json . || true
+          
+          if [ -f "sbom.json" ]; then
+            echo "sbom_path=sbom.json" >> $GITHUB_OUTPUT
+            echo "✅ SBOM generated"
+          else
+            echo "⚠️ SBOM generation failed"
+            echo "sbom_path=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Artifacts
+        if: inputs.upload_artifacts == true && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-scan-results
+          path: |
+            sca-results.*
+            sbom.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request' && inputs.comment_pr == true && steps.analyze.outputs.vulnerabilities_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let comment = '## 🔍 SCA Scan Results\n\n';
+            comment += '### Summary\n';
+            comment += '| Severity | Count |\n';
+            comment += '|----------|-------|\n';
+            comment += '| 🔴 CRITICAL | ${{ steps.analyze.outputs.critical_count }} |\n';
+            comment += '| 🟠 HIGH | ${{ steps.analyze.outputs.high_count }} |\n';
+            comment += '| 🟡 MEDIUM | ${{ steps.analyze.outputs.medium_count }} |\n';
+            comment += '| 🔵 LOW | ${{ steps.analyze.outputs.low_count }} |\n\n';
+            
+            comment += '### Details\n';
+            comment += 'View detailed scan results in the artifacts.\n\n';
+            comment += '_📊 Scan: Trivy (SCA - Dependency Vulnerabilities)_\n';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Create Issue for Vulnerabilities
+        if: inputs.create_issue == true && steps.analyze.outputs.vulnerabilities_found == 'true'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN || secrets.github_token }}
+          script: |
+            const title = `[SCA] Vulnerabilities detected - ${context.ref_name}`;
+            const body = `
+            ## 🔍 SCA Scan Results
+            
+            Found vulnerabilities in dependencies:
+            - **CRITICAL**: ${{ steps.analyze.outputs.critical_count }}
+            - **HIGH**: ${{ steps.analyze.outputs.high_count }}
+            - **MEDIUM**: ${{ steps.analyze.outputs.medium_count }}
+            - **LOW**: ${{ steps.analyze.outputs.low_count }}
+            
+            ### Action Required
+            Review and update vulnerable dependencies immediately.
+            
+            **Run Details**: [View Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'sca', 'dependencies']
+            });
+
+      - name: Determine Severity Level
+        id: severity
+        if: always()
+        run: |
+          CRITICAL=${{ steps.analyze.outputs.critical_count }}
+          HIGH=${{ steps.analyze.outputs.high_count }}
+          
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "level=CRITICAL" >> $GITHUB_OUTPUT
+          elif [ "$HIGH" -gt 0 ]; then
+            echo "level=HIGH" >> $GITHUB_OUTPUT
+          else
+            echo "level=MEDIUM" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "📊 SCA Scan Summary"
+          echo "=================="
+          echo "Status: ${{ steps.analyze.outputs.scan_status }}"
+          echo "Vulnerabilities Found: ${{ steps.analyze.outputs.vulnerabilities_found }}"
+          echo "CRITICAL: ${{ steps.analyze.outputs.critical_count }}"
+          echo "HIGH: ${{ steps.analyze.outputs.high_count }}"
+          echo "MEDIUM: ${{ steps.analyze.outputs.medium_count }}"
+          echo "LOW: ${{ steps.analyze.outputs.low_count }}"
+
+      - name: Fail Workflow if Required
+        if: inputs.fail_on_finding == true && steps.analyze.outputs.vulnerabilities_found == 'true'
+        run: |
+          CRITICAL=${{ steps.analyze.outputs.critical_count }}
+          FAIL_LEVEL="${{ inputs.fail_on_severity }}"
+          
+          case "$FAIL_LEVEL" in
+            CRITICAL)
+              if [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: Critical vulnerabilities found"
+                exit 1
+              fi
+              ;;
+            HIGH)
+              if [ "${{ steps.analyze.outputs.high_count }}" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: High/Critical vulnerabilities found"
+                exit 1
+              fi
+              ;;
+            MEDIUM)
+              if [ "${{ steps.analyze.outputs.medium_count }}" -gt 0 ] || [ "${{ steps.analyze.outputs.high_count }}" -gt 0 ] || [ "$CRITICAL" -gt 0 ]; then
+                echo "❌ Failing: Medium/High/Critical vulnerabilities found"
+                exit 1
+              fi
+              ;;
+          esac
